@@ -1,6 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import { createRoot } from 'react-dom/client';
-import { ArrowUpRight, ChevronDown, Menu, X, Linkedin, Instagram, Youtube, ShieldCheck, Sparkles, MapPin, CalendarDays, Users, ArrowRight, Check, Images, Send, Trophy, Code2, Mic2, GraduationCap } from 'lucide-react';
+import { ArrowUpRight, ArrowDown, ChevronDown, Menu, X, Linkedin, Instagram, Youtube, ShieldCheck, Sparkles, MapPin, CalendarDays, Users, ArrowRight, Check, Images, Send, Trophy, Code2, Mic2, GraduationCap } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
@@ -77,9 +77,53 @@ const registrationOptions = [
   {id:'student', title:'Student Community', desc:'Join student-focused activities, mentorship and learning opportunities.', icon:GraduationCap}
 ];
 
+const vipBenefits = [
+  ['Priority access','Limited VIP seats with priority entry and front-row seating for key sessions.'],
+  ['Speaker lounge access','Meet selected speakers, partners and CyberFest organizers in a focused networking area.'],
+  ['VIP networking hour','A curated conversation block for founders, leaders, recruiters and standout community members.'],
+  ['Recognition badge','A VIP guest badge for easier introductions and priority support during the event.']
+];
+
+const speakerFormats = [
+  {id:'keynote', title:'Keynote / Featured Talk', desc:'A high-impact session for leaders, founders, researchers or community voices.', icon:Mic2},
+  {id:'technical', title:'Technical Session', desc:'A practical cybersecurity, AI, cloud, privacy or engineering deep dive.', icon:Code2},
+  {id:'workshop', title:'Hands-on Workshop', desc:'A guided lab, demo or skill-building session for attendees.', icon:GraduationCap},
+  {id:'panel', title:'Panel / Fireside Chat', desc:'Join a moderated conversation with other industry and community leaders.', icon:Users}
+];
+
+const sponsorTiers = [
+  ['Title Sponsor','Prime brand placement, stage mentions, booth visibility, VIP access and premium digital coverage.'],
+  ['Gold Sponsor','High-visibility branding, sponsor booth, social coverage and access to community networking.'],
+  ['Community Sponsor','Support student access, workshops or CTF activity with focused recognition across the event.']
+];
+
+const partnerOptions = [
+  ['Media Partner','Help amplify CyberFest through press, interviews, creator coverage and community storytelling.'],
+  ['Community Partner','Bring your student society, tech circle or local community into the CyberFest ecosystem.'],
+  ['Knowledge Partner','Support the program with mentors, trainers, labs, technical content or industry expertise.']
+];
+
+const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '') || '';
+
+function getCurrentPath(){
+  const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
+  if (basePath && pathname.startsWith(basePath)) {
+    return pathname.slice(basePath.length) || '/';
+  }
+  return pathname;
+}
+
+function go(path){
+  const normalizedPath = path.startsWith('http') ? path : `${basePath}/${path.replace(/^\/+/, '')}`.replace(/\/+/g, '/');
+  window.location.assign(normalizedPath || '/');
+}
+
 function App(){
-  const path=window.location.pathname.replace(/\/+$/,'') || '/';
+  const path=getCurrentPath();
   if(path==='/registration') return <RegistrationPage/>;
+  if(path==='/vip-registration') return <VipRegistrationPage/>;
+  if(path==='/speaker-registration') return <SpeakerRegistrationPage/>;
+  if(path==='/sponsor') return <SponsorPage/>;
   if(path==='/gallery') return <GalleryPage/>;
   return <HomePage/>;
 }
@@ -113,11 +157,10 @@ function useMotion(){
   return app;
 }
 
-function go(path){window.location.href=path;}
 function Header({active=''}){
   const [menuOpen,setMenuOpen]=useState(false);
-  const links=[['Experience','#experience'],['Speakers','#speakers'],['Agenda','#agenda'],['Gallery','/gallery'],['FAQ','#faq']];
-  const home=window.location.pathname==='/' || window.location.pathname==='';
+  const links=[['Experience','#experience'],['Speakers','#speakers'],['Agenda','#agenda'],['Sponsors','/sponsor'],['Gallery','/gallery'],['FAQ','#faq']];
+  const home=getCurrentPath()==='/';
   const click=(href)=>{setMenuOpen(false); if(href.startsWith('#')){if(home) document.querySelector(href)?.scrollIntoView({behavior:'smooth'});else go('/'+href);} else go(href)};
   return <header className="nav"><div className="nav-inner">
     <button className="brand brand-button" onClick={()=>go('/')}><img src={strokeLogo} alt="CyberFest logo" className="brand-logo"/></button>
@@ -195,7 +238,12 @@ function HomePage(){
               backgroundClip: 'text',
               color: 'transparent',
               display: 'inline-block'
-            }}>build, break</span><br/>and defend.</>} text="A mix of security practitioners, technology leaders and ambitious minds bringing real-world experience to the stage."/><div className="speaker-grid">{speakers.map((s,i)=><article className="speaker-card reveal tilt" key={s.name}><div className="speaker-img"><img src={s.img}/><div className="speaker-shade"/><div className="speaker-social"><Linkedin size={13}/><Instagram size={13}/></div><span className="speaker-num">0{i+1}</span></div><div className="speaker-info"><h3>{s.name}</h3><p>{s.role}</p><small>{s.topic}</small></div></article>)}</div></section>
+            }}>build, break</span><br/>and defend.</>} text="A mix of security practitioners, technology leaders and ambitious minds bringing real-world experience to the stage."/>
+            
+            {/* <div className="speaker-action-bar reveal"><div><span className="eyebrow">CALL FOR SPEAKERS</span><p>Have a talk, workshop or panel idea for CyberFest 2026?</p></div><button className="btn btn-primary magnetic" onClick={()=>go('/speaker-registration')}>Register as a Speaker <Mic2 size={16}/></button></div> */}
+            
+            <div className="speaker-grid">{speakers.map((s,i)=><article className="speaker-card reveal tilt" key={s.name}><div className="speaker-img"><img src={s.img}/><div className="speaker-shade"/><div className="speaker-social"><Linkedin size={13}/><Instagram size={13}/></div><span className="speaker-num">0{i+1}</span></div><div className="speaker-info"><h3>{s.name}</h3><p>{s.role}</p><small>{s.topic}</small></div></article>)}</div>
+            <button className="text-link magnetic" onClick={()=>go('/speaker-registration')}> Register as a Speaker <ArrowUpRight size={16}/></button></section>
       <section className="section agenda-section" id="agenda"><SectionHead kicker="EXPLORE THE AGENDA" title={<>One day. <span>Eight moments</span><br/>worth showing up for.</>} text="A fast-moving program balancing big-picture ideas, practical learning and time to connect."/><div className="agenda-wrap"><div className="agenda-intro"><span>SEPTEMBER / 2026</span><strong>THE DAY<br/>AT A GLANCE</strong><p>Times are provisional and can be updated as the final CyberFest program is confirmed.</p></div><div className="agenda-list">{agenda.map(([n,time,title,desc,speaker])=><article className="agenda-row reveal" key={n}><div className="agenda-no">{n}</div><div className="agenda-time">{time}</div><div className="agenda-main"><h3>{title}</h3><p>{desc}</p></div><div className="agenda-speaker">{speaker}</div><ArrowUpRight size={18}/></article>)}</div></div></section>
       <section className="section stats-section"><div className="stats-grid"><Stat n="500" suffix="+" label="registered community"/><Stat n="20" suffix="+" label="speakers & mentors"/><Stat n="12" suffix="" label="hands-on sessions"/><Stat n="01" suffix="" label="unforgettable day"/></div></section>
       <section className="section gallery" id="venue"><SectionHead kicker="WHAT YOU CAN EXPECT" title={<>A room full of <span>energy.</span><br/>A community full of ideas.</>} text="From keynote moments to focused conversations, CyberFest is designed to feel immersive from the first step in."/><div className="gallery-grid"><div className="gallery-item big reveal"><img src={galleryImages[0][1]}/><span>01 / THE MAIN STAGE</span></div><div className="gallery-item reveal"><img src={galleryImages[1][1]}/><span>02 / PURPOSEFUL NETWORKING</span></div><div className="gallery-item reveal"><img src={galleryImages[2][1]}/><span>03 / HANDS-ON LEARNING</span></div><div className="gallery-copy reveal"><Images/><h3>Explore the <span>CyberFest gallery.</span></h3><p>See highlights from previous years, community moments, workshops and the people who make CyberFest what it is.</p><button className="text-link magnetic" onClick={()=>go('/gallery')}>Open full gallery <ArrowUpRight size={16}/></button></div></div></section>
@@ -207,7 +255,7 @@ function HomePage(){
               backgroundClip: 'text',
               color: 'transparent',
               display: 'inline-block'
-            }}>bold builders.</span></>} text="Partner with CyberFest to put your brand in the room with the next generation of technology and security talent."/><div className="sponsor-wall">{sponsors.map((s,i)=><div className="sponsor reveal" key={s}><span>{i%3===0?'◆':i%3===1?'◉':'✦'}</span>{s}</div>)}</div><button className="text-link magnetic">Become a sponsor <ArrowUpRight size={16}/></button></section>
+            }}>bold builders.</span></>} text="Partner with CyberFest to put your brand in the room with the next generation of technology and security talent."/><div className="sponsor-wall">{sponsors.map((s,i)=><div className="sponsor reveal" key={s}><span>{i%3===0?'◆':i%3===1?'◉':'✦'}</span>{s}</div>)}</div><button className="text-link magnetic" onClick={()=>go('/sponsor')}>Become a sponsor <ArrowUpRight size={16}/></button></section>
       <section className="section testimonials"><SectionHead kicker="PAST ATTENDEES" title={<>The kind of event <span  style={{
               backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
@@ -223,7 +271,7 @@ function HomePage(){
     </main><Footer/></div>
 }
 
-function CTA(){return <section className="cta" style={{backgroundImage:`url(${bgImage})`, backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2>Don’t just watch<br/>the future. <span style={{color:'black'}}>shape it.</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ > One registration. Multiple CyberFest experiences.</div></div></section>}
+function CTA(){return <section className="cta" style={{backgroundImage:`url(${bgImage})`, backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2 style={{fontFamily:'Buchery, "Space Grotesk", sans-serif', lineHeight:1.05, letterSpacing:'-0.02em'}}># Cyber ka Scene<br/><span style={{color:'black'}}> ON Hay!</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ ><b> Don’t just watch the future. Shape it.</b></div></div></section>}
 
 function RegistrationPage(){
   const app=useMotion();
@@ -233,9 +281,9 @@ function RegistrationPage(){
   const submit=(e)=>{e.preventDefault();setSubmitted(true);window.scrollTo({top:0,behavior:'smooth'});};
   return <div ref={app} className="site inner-page"><div className="cursor-glow"/><Header active="registration"/>
     <main>
-      <section className="inner-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">CYBERFEST 2026 / REGISTRATION</span><h1 className="inner-title">Register <span>yourself.</span><br/>Choose your experience.</h1><p>There are no ticket tiers or ticket sales here. Tell us what you want to be part of and register once for the CyberFest experiences that interest you.</p><div className="hero-actions"><button className="btn btn-ghost magnetic" onClick={()=>go('/')}>Back to CyberFest <ArrowRight size={17}/></button></div></div></section>
+      <section className="inner-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">CYBERFEST 2026 / REGISTRATION</span><h1 className="inner-title">Register <span>yourself.</span><br/>Choose your experience.</h1><p>There are no ticket tiers or ticket sales here. Tell us what you want to be part of and register once for the CyberFest experiences that interest you.</p><div className="hero-actions"><button className="btn btn-ghost magnetic" onClick={()=>go('/')}>Back to CyberFest <ArrowRight size={17}/></button><button className="btn btn-primary magnetic" onClick={()=>go('/vip-registration')}>VIP Guest <Sparkles size={16}/></button><button className="btn btn-ghost magnetic" onClick={()=>go('/speaker-registration')}>Register as Speaker <Mic2 size={16}/></button></div></div></section>
       <section className="registration-section section"><div className="registration-layout">
-        <div className="registration-intro reveal"><span className="eyebrow">01 / SELECT EXPERIENCES</span><h2>One form.<br/><span>Multiple choices.</span></h2><p>Select everything you want to attend. You can choose CyberFest itself, CTF, workshops, networking and student-focused activities together.</p><div className="selection-count"><strong>{selected.length}</strong><span>experience{selected.length===1?'':'s'} selected</span></div></div>
+        <div className="registration-intro reveal"><span className="eyebrow">01 / SELECT EXPERIENCES</span><h2>One form.<br/><span>Multiple choices.</span></h2><p>Select everything you want to attend. You can choose CyberFest itself, CTF, workshops, networking and student-focused activities together.</p><div className="pathway-mini"><button onClick={()=>go('/vip-registration')}><Sparkles size={15}/> VIP Guest slots</button><button onClick={()=>go('/speaker-registration')}><Mic2 size={15}/> Speaker registration</button></div><div className="selection-count"><strong>{selected.length}</strong><span>experience{selected.length===1?'':'s'} selected</span></div></div>
         <form className="registration-form" onSubmit={submit}>
           <div className="form-block"><span className="form-label">WHAT DO YOU WANT TO JOIN?</span><div className="option-grid">{registrationOptions.map(({id,title,desc,icon:Icon})=>{const active=selected.includes(id);return <button type="button" className={'register-option '+(active?'selected':'')} key={id} onClick={()=>toggle(id)}><span className="option-icon"><Icon size={20}/></span><span className="option-text"><b>{title}</b><small>{desc}</small></span><span className="option-check">{active?<Check size={15}/>:null}</span></button>})}</div></div>
           <div className="form-block"><span className="form-label">YOUR DETAILS</span><div className="form-grid"><label>Full Name<input required name="name" placeholder="Your full name"/></label><label>Email Address<input required type="email" name="email" placeholder="you@example.com"/></label><label>Phone Number<input name="phone" placeholder="+92 3XX XXXXXXX"/></label><label>Organization / University<input name="organization" placeholder="Company, university or community"/></label><label>City<input name="city" placeholder="Peshawar"/></label><label>Experience Level<select name="level" defaultValue="student"><option value="student">Student / Beginner</option><option value="intermediate">Intermediate</option><option value="professional">Professional</option><option value="expert">Security Expert / Researcher</option></select></label></div></div>
@@ -245,6 +293,73 @@ function RegistrationPage(){
         </form>
       </div></section>
       <section className="section registration-note"><div className="note-card reveal"><Sparkles/><div><span className="eyebrow">BUILT FOR CYBERFEST</span><h3>Register once. Pick more than one thing.</h3><p>For the final production version, this form can connect to Firebase, MongoDB, Google Sheets, a custom API or any registration backend you choose.</p></div></div></section>
+    </main><Footer/></div>
+}
+
+function VipRegistrationPage(){
+  const app=useMotion();
+  const [submitted,setSubmitted]=useState(false);
+  const submit=(e)=>{e.preventDefault();setSubmitted(true);window.scrollTo({top:0,behavior:'smooth'});};
+  return <div ref={app} className="site inner-page"><div className="cursor-glow"/><Header active="registration"/>
+    <main>
+      <section className="inner-hero vip-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">LIMITED SLOTS / VIP GUEST</span><h1 className="inner-title">Register as a <span>VIP Guest.</span></h1><p>Apply for priority access to CyberFest 2026 with curated networking, reserved seating and direct access to the people shaping the event.</p><div className="hero-actions"><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>General Registration <ArrowRight size={17}/></button><button className="btn btn-ghost magnetic" onClick={()=>go('/sponsor')}>Sponsor Opportunities <ArrowUpRight size={17}/></button></div></div></section>
+      <section className="section registration-section"><div className="registration-layout">
+        <div className="registration-intro reveal"><span className="eyebrow">VIP ACCESS</span><h2>Designed for <span>focused connections.</span></h2><p>VIP approval is limited so the experience stays useful for leaders, founders, mentors, hiring teams, partners and standout community guests.</p><div className="selection-count"><strong>25</strong><span>limited VIP slots</span></div></div>
+        <form className="registration-form page-form" onSubmit={submit}>
+          <div className="form-block"><span className="form-label">VIP BENEFITS</span><div className="feature-grid">{vipBenefits.map(([title,desc])=><article className="feature-card" key={title}><Sparkles size={18}/><h3>{title}</h3><p>{desc}</p></article>)}</div></div>
+          <div className="form-block"><span className="form-label">YOUR DETAILS</span><div className="form-grid"><label>Full Name<input required name="name" placeholder="Your full name"/></label><label>Email Address<input required type="email" name="email" placeholder="you@example.com"/></label><label>Phone Number<input required name="phone" placeholder="+92 3XX XXXXXXX"/></label><label>Organization<input name="organization" placeholder="Company, university or community"/></label><label>Role / Designation<input name="role" placeholder="Founder, CISO, student lead..."/></label><label>City<input name="city" placeholder="Peshawar"/></label></div></div>
+          <div className="form-block"><span className="form-label">VIP REQUEST</span><div className="form-grid"><label>Guest Category<select name="category" defaultValue="industry"><option value="industry">Industry Leader</option><option value="founder">Founder / Entrepreneur</option><option value="mentor">Mentor / Trainer</option><option value="community">Community Leader</option><option value="media">Media / Creator</option></select></label><label>LinkedIn / Website<input name="profile" placeholder="https://linkedin.com/in/..."/></label></div><label className="full-label spaced-label">Why should we reserve a VIP slot for you?<textarea required name="reason" placeholder="Tell us about your work, your CyberFest interest and who you want to connect with..." rows="5"/></label></div>
+          <div className="form-actions"><button className="btn btn-primary magnetic">Submit VIP Request <Send size={16}/></button><small>VIP slots are reviewed by the CyberFest team. Confirmation can be connected to email or your registration backend.</small></div>
+          {submitted&&<div className="success-panel"><Check/><div><b>VIP request captured in this demo.</b><span>Connect this form to your backend/API to review limited VIP applications.</span></div></div>}
+        </form>
+      </div></section>
+    </main><Footer/></div>
+}
+
+function SpeakerRegistrationPage(){
+  const app=useMotion();
+  const [selected,setSelected]=useState(['technical']);
+  const [submitted,setSubmitted]=useState(false);
+  const toggle=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+  const submit=(e)=>{e.preventDefault();setSubmitted(true);window.scrollTo({top:0,behavior:'smooth'});};
+  return <div ref={app} className="site inner-page"><div className="cursor-glow"/><Header active="speakers"/>
+    <main>
+      <section className="inner-hero speaker-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">CALL FOR SPEAKERS / CYBERFEST 2026</span><h1 className="inner-title">Register as a <span>Speaker.</span></h1><p>Bring a talk, workshop, panel idea or practical session to CyberFest. We are looking for clear voices with useful ideas for students, builders and security teams.</p><div className="hero-actions"><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Attend CyberFest <ArrowRight size={17}/></button><button className="btn btn-ghost magnetic" onClick={()=>go('/sponsor')}>Become Sponsor <ArrowUpRight size={17}/></button></div></div></section>
+      <section className="registration-section section"><div className="registration-layout">
+        <div className="registration-intro reveal"><span className="eyebrow">SESSION PROPOSAL</span><h2>Your idea.<br/><span>Our stage.</span></h2><p>Submit the format that fits you best. Strong proposals are practical, audience-aware and tied to real cybersecurity, technology or community outcomes.</p><div className="selection-count"><strong>{selected.length}</strong><span>format{selected.length===1?'':'s'} selected</span></div></div>
+        <form className="registration-form page-form" onSubmit={submit}>
+          <div className="form-block"><span className="form-label">SPEAKER FORMAT</span><div className="option-grid">{speakerFormats.map(({id,title,desc,icon:Icon})=>{const active=selected.includes(id);return <button type="button" className={'register-option '+(active?'selected':'')} key={id} onClick={()=>toggle(id)}><span className="option-icon"><Icon size={20}/></span><span className="option-text"><b>{title}</b><small>{desc}</small></span><span className="option-check">{active?<Check size={15}/>:null}</span></button>})}</div></div>
+          <div className="form-block"><span className="form-label">SPEAKER DETAILS</span><div className="form-grid"><label>Full Name<input required name="name" placeholder="Your full name"/></label><label>Email Address<input required type="email" name="email" placeholder="you@example.com"/></label><label>Phone Number<input name="phone" placeholder="+92 3XX XXXXXXX"/></label><label>Organization / Title<input name="organization" placeholder="Company, university or title"/></label><label>LinkedIn / Portfolio<input name="profile" placeholder="https://linkedin.com/in/..."/></label><label>Audience Level<select name="audience" defaultValue="mixed"><option value="beginner">Beginner Friendly</option><option value="mixed">Mixed Audience</option><option value="advanced">Advanced / Technical</option><option value="leadership">Leadership / Strategy</option></select></label></div></div>
+          <div className="form-block"><span className="form-label">SESSION DETAILS</span><label className="full-label">Session Title<input required name="sessionTitle" placeholder="Example: Securing AI Workflows Before They Scale"/></label><label className="full-label spaced-label">Session Summary<textarea required name="summary" placeholder="What will the audience learn, build or understand by the end of your session?" rows="5"/></label><label className="full-label spaced-label">Short Speaker Bio<textarea name="bio" placeholder="A short bio for the CyberFest speaker page..." rows="4"/></label></div>
+          <div className="form-actions"><button className="btn btn-primary magnetic" disabled={selected.length===0}>Submit Speaker Proposal <Send size={16}/></button><small>The CyberFest team can review proposals and follow up with selected speakers once the final agenda is being built.</small></div>
+          {submitted&&<div className="success-panel"><Check/><div><b>Speaker proposal captured in this demo.</b><span>Connect this form to your backend/API to store and review speaker applications.</span></div></div>}
+        </form>
+      </div></section>
+    </main><Footer/></div>
+}
+
+function SponsorPage(){
+  const app=useMotion();
+  const [intent,setIntent]=useState('sponsor');
+  const [submitted,setSubmitted]=useState(false);
+  const submit=(e)=>{e.preventDefault();setSubmitted(true);window.scrollTo({top:0,behavior:'smooth'});};
+  return <div ref={app} className="site inner-page"><div className="cursor-glow"/><Header active="sponsors"/>
+    <main>
+      <section className="inner-hero sponsor-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">SPONSORSHIP / PARTNERSHIP</span><h1 className="inner-title">Become a <span>Sponsor.</span><br/>Or become our <span>Partner.</span></h1><p>Put your brand, community or expertise in front of CyberFest attendees: students, builders, founders, researchers and cybersecurity professionals.</p><div className="hero-actions"><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register to Attend <ArrowRight size={17}/></button><button className="btn btn-ghost magnetic" onClick={()=>go('/speaker-registration')}>Register as Speaker <Mic2 size={16}/></button></div></div></section>
+      <section className="section sponsor-page-section"><div className="archive-head"><div><span className="eyebrow">WAYS TO SUPPORT</span><h2>Choose your <span>CyberFest role.</span></h2></div><button className="btn btn-primary magnetic" onClick={()=>document.querySelector('#sponsor-form')?.scrollIntoView({behavior:'smooth'})}>Start Partnership <ArrowDown size={16}/></button></div>
+        <div className="sponsor-tier-grid">{sponsorTiers.map(([title,desc],i)=><article className="sponsor-tier reveal tilt" key={title}><span>{String(i+1).padStart(2,'0')}</span><h3>{title}</h3><p>{desc}</p><button onClick={()=>setIntent('sponsor')}>Become Sponsor <ArrowUpRight size={15}/></button></article>)}</div>
+        <div className="partner-panel reveal"><div><span className="eyebrow">BECOME OUR PARTNER</span><h3>Partnerships for reach, knowledge and community growth.</h3><p>Not every valuable supporter needs a sponsor package. CyberFest can also work with media, student groups, communities, trainers and knowledge partners.</p></div><div className="partner-grid">{partnerOptions.map(([title,desc])=><article key={title}><Users size={17}/><b>{title}</b><small>{desc}</small></article>)}</div></div>
+      </section>
+      <section className="registration-section section" id="sponsor-form"><div className="registration-layout">
+        <div className="registration-intro reveal"><span className="eyebrow">CONTACT FORM</span><h2>Tell us how you want to <span>join in.</span></h2><p>Select whether you want to sponsor CyberFest or become a partner. The team can use this submission to start a package discussion.</p><div className="selection-count"><strong>{intent==='sponsor'?'S':'P'}</strong><span>{intent==='sponsor'?'sponsor request':'partner request'}</span></div></div>
+        <form className="registration-form page-form" onSubmit={submit}>
+          <div className="form-block"><span className="form-label">I WANT TO</span><div className="intent-toggle"><button type="button" className={intent==='sponsor'?'active':''} onClick={()=>setIntent('sponsor')}><ShieldCheck size={18}/> Become Sponsor</button><button type="button" className={intent==='partner'?'active':''} onClick={()=>setIntent('partner')}><Users size={18}/> Become Our Partner</button></div></div>
+          <div className="form-block"><span className="form-label">ORGANIZATION DETAILS</span><div className="form-grid"><label>Company / Organization<input required name="company" placeholder="Organization name"/></label><label>Contact Person<input required name="contact" placeholder="Full name"/></label><label>Email Address<input required type="email" name="email" placeholder="you@example.com"/></label><label>Phone Number<input name="phone" placeholder="+92 3XX XXXXXXX"/></label><label>Website / Social<input name="website" placeholder="https://..."/></label><label>Preferred Support<select name="support" defaultValue="discussion"><option value="discussion">Discuss Options</option><option value="title">Title Sponsor</option><option value="gold">Gold Sponsor</option><option value="community">Community Sponsor</option><option value="media">Media Partner</option><option value="knowledge">Knowledge Partner</option></select></label></div></div>
+          <div className="form-block"><span className="form-label">MESSAGE</span><label className="full-label">What would you like to support?<textarea required name="message" placeholder="Tell us about your goals, audience, budget range, partner idea or what kind of visibility you are looking for..." rows="5"/></label></div>
+          <div className="form-actions"><button className="btn btn-primary magnetic">Submit {intent==='sponsor'?'Sponsor':'Partner'} Request <Send size={16}/></button><small>This is a demo submission. Connect it to your backend, CRM or Google Sheet to collect sponsor and partner leads.</small></div>
+          {submitted&&<div className="success-panel"><Check/><div><b>{intent==='sponsor'?'Sponsor':'Partner'} request captured in this demo.</b><span>Connect this form to your backend/API so the CyberFest team can follow up.</span></div></div>}
+        </form>
+      </div></section>
     </main><Footer/></div>
 }
 
