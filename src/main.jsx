@@ -5,21 +5,30 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import './styles.css';
+import bgImage from './assets/bg.png';
+import strokeLogo from './assets/stroke.png';
+import card2Image from './assets/card2.jpg';
+import logoImage from './assets/logo.png';
+import jawadImage from './assets/speakers/jawad.jpg';
+import fawadBachaImage from './assets/speakers/fawadb.jpg';
+import hishamImage from './assets/speakers/hisham.jpg';
+import fawadKamalImage from './assets/speakers/fawad.png';
+import afsarImage from './assets/speakers/afsar-afghan.jpg';
+import adnanImage from './assets/speakers/adnan.jfif';
+import jalalImage from './assets/speakers/jalal.jpg';
+import asifImage from './assets/speakers/asift.jpg';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const speakers = [
-  {name:'Muhammad Jawad', role:'Director CyberPashto and the event head', topic:'Turning intelligence into action', img:'assets/speakers/jawad.jpg'},
-   {name:'Fawad Bacha', role:'CEO of CyberPashto', topic:'Following the evidence', img:'assets/speakers/fawadb.jpg'},
-  {name:'Hisham Sarwar', role:'CEO of innovistaofficialpk', topic:'Zero Trust & the next security frontier', img:'assets/speakers/hisham.jpg'},
-  {name:'Fawad Kamal', role:'Community Manager @gdglivepakistan', topic:'Inside the modern threat landscape', img:'assets/speakers/fawad.png'},
-  {name:'Afsar Afghan', role:'Artist and Social Media Influencer', topic:'Securing AI before it scales', img:'assets/speakers/afsar-afghan.jpg'},
-  {name:'Adnan Malik', role:'CEO of SecurePurple', topic:'Cloud-native defense by design', img:'assets/speakers/adnan.jfif'},
-  
- 
-  {name:'Jalal Rehman', role:'Hosting Cyberfest', topic:'Breaking assumptions, building resilience', img:'assets/speakers/jalal.jpg'},
-
-  {name:'Asif Taj', role:'Seasoned Flutter Developer', topic:'From alert fatigue to autonomous SOCs', img:'assets/speakers/asift.jpg'},
+  {name:'Muhammad Jawad', role:'Director CyberPashto and the event head', topic:'Turning intelligence into action', img: jawadImage},
+  {name:'Fawad Bacha', role:'CEO of CyberPashto', topic:'Following the evidence', img: fawadBachaImage},
+  {name:'Hisham Sarwar', role:'CEO of innovistaofficialpk', topic:'Zero Trust & the next security frontier', img: hishamImage},
+  {name:'Fawad Kamal', role:'Community Manager @gdglivepakistan', topic:'Inside the modern threat landscape', img: fawadKamalImage},
+  {name:'Afsar Afghan', role:'Artist and Social Media Influencer', topic:'Securing AI before it scales', img: afsarImage},
+  {name:'Adnan Malik', role:'CEO of SecurePurple', topic:'Cloud-native defense by design', img: adnanImage},
+  {name:'Jalal Rehman', role:'Hosting Cyberfest', topic:'Breaking assumptions, building resilience', img: jalalImage},
+  {name:'Asif Taj', role:'Seasoned Flutter Developer', topic:'From alert fatigue to autonomous SOCs', img: asifImage},
 ];
 
 const agenda = [
@@ -111,13 +120,13 @@ function Header({active=''}){
   const home=window.location.pathname==='/' || window.location.pathname==='';
   const click=(href)=>{setMenuOpen(false); if(href.startsWith('#')){if(home) document.querySelector(href)?.scrollIntoView({behavior:'smooth'});else go('/'+href);} else go(href)};
   return <header className="nav"><div className="nav-inner">
-    <button className="brand brand-button" onClick={()=>go('/')}><img src="assets/stroke.png" alt="CyberFest logo" className="brand-logo"/></button>
+    <button className="brand brand-button" onClick={()=>go('/')}><img src={strokeLogo} alt="CyberFest logo" className="brand-logo"/></button>
     <nav className={menuOpen?'nav-links open':'nav-links'}>{links.map(([x,h])=><button key={x} className={active===x.toLowerCase()?'active':''} onClick={()=>click(h)}>{x}</button>)}</nav>
 
     <button
       className="nav-ticket magnetic"
       style={{
-        backgroundImage: 'url(assets/bg.png)',
+        backgroundImage: `url(${bgImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -144,7 +153,7 @@ function HomePage(){
           <span
             className="line accent-line"
             style={{
-              backgroundImage: 'url(assets/bg.png)',
+              backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               WebkitBackgroundClip: 'text',
@@ -161,16 +170,16 @@ function HomePage(){
         {/* <h1 className="hero-title"><span className="line">WHERE CYBER</span><span className="line accent-line">MINDS <em>MEET</em></span><span className="line">THE FUTURE<span className="dot">.</span></span></h1> */}
         <p className="hero-copy">A high-energy gathering for cybersecurity builders, ethical hackers, students, founders and the people shaping a safer digital future.</p>
         <div className="hero-actions"><button className="btn btn-primary magnetic"  style={{
-        backgroundImage: 'url(assets/bg.png)',
+        backgroundImage: `url(${bgImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
       }} onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><button className="btn btn-ghost magnetic" onClick={()=>scrollTo('#agenda')}>Explore agenda <ArrowRight size={17}/></button></div>
         <div className="hero-meta"><div><strong>15+</strong><span>DAYS<br/>OF IMPACT</span></div><div><strong>10+</strong><span>EXPERT<br/>VOICES</span></div><div><strong>5000+</strong><span>CYBER<br/>MINDS</span></div></div>
-      </div><div className="hero-media"><img className="hero-image" src="assets/card2.jpg"/><div className="media-overlay"/><div className="media-label"><span>LIVE / SEPT 2026</span><b>CyberFest</b></div></div></section>
-      <section className="marquee" aria-label="CyberFest topics"><div className="marquee-track">{[...sponsors,...sponsors].map((s,i)=><React.Fragment key={i}><span>{s}</span><img src="assets/stroke.png" alt="logo" /></React.Fragment>)}</div></section>
+      </div><div className="hero-media"><img className="hero-image" src={card2Image}/><div className="media-overlay"/><div className="media-label"><span>LIVE / SEPT 2026</span><b>CyberFest</b></div></div></section>
+      <section className="marquee" aria-label="CyberFest topics"><div className="marquee-track">{[...sponsors,...sponsors].map((s,i)=><React.Fragment key={i}><span>{s}</span><img src={strokeLogo} alt="logo" /></React.Fragment>)}</div></section>
       <section className="section experience" id="experience"><div className="grid-glow"/><SectionHead kicker="THE EXPERIENCE" title={<>More than a conference.<br/><span  style={{
-              backgroundImage: 'url(assets/bg.png)',
+              backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               WebkitBackgroundClip: 'text',
@@ -179,7 +188,7 @@ function HomePage(){
               display: 'inline-block'
             }}>Built for momentum.</span></>} text="Every part of CyberFest is designed to move you from listening to doing — with sharp ideas, practical sessions and people worth knowing."/><div className="experience-grid">{[['01','Live Intelligence','Hear from security leaders, researchers and practitioners unpacking the threats and opportunities shaping tomorrow.'],['02','Hands-on Labs','Step beyond the slides with practical workshops, red-team thinking and guided security challenges.'],['03','Real Connections','Meet the builders, founders and defenders creating Pakistan’s next generation of cyber talent.'],['04','Future Focus','Explore AI security, cloud defense, digital trust and the technologies rewriting the security playbook.']].map(([n,t,d])=><article className="experience-card reveal tilt" key={n}><div className="card-number">{n}</div><div className="icon-box"><Sparkles size={18}/></div><h3>{t}</h3><p>{d}</p><ArrowUpRight className="card-arrow" size={19}/></article>)}</div></section>
       <section className="section speakers" id="speakers"><SectionHead kicker="MEET THE SPEAKERS" title={<>People who <span  style={{
-              backgroundImage: 'url(assets/bg.png)',
+              backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               WebkitBackgroundClip: 'text',
@@ -191,7 +200,7 @@ function HomePage(){
       <section className="section stats-section"><div className="stats-grid"><Stat n="500" suffix="+" label="registered community"/><Stat n="20" suffix="+" label="speakers & mentors"/><Stat n="12" suffix="" label="hands-on sessions"/><Stat n="01" suffix="" label="unforgettable day"/></div></section>
       <section className="section gallery" id="venue"><SectionHead kicker="WHAT YOU CAN EXPECT" title={<>A room full of <span>energy.</span><br/>A community full of ideas.</>} text="From keynote moments to focused conversations, CyberFest is designed to feel immersive from the first step in."/><div className="gallery-grid"><div className="gallery-item big reveal"><img src={galleryImages[0][1]}/><span>01 / THE MAIN STAGE</span></div><div className="gallery-item reveal"><img src={galleryImages[1][1]}/><span>02 / PURPOSEFUL NETWORKING</span></div><div className="gallery-item reveal"><img src={galleryImages[2][1]}/><span>03 / HANDS-ON LEARNING</span></div><div className="gallery-copy reveal"><Images/><h3>Explore the <span>CyberFest gallery.</span></h3><p>See highlights from previous years, community moments, workshops and the people who make CyberFest what it is.</p><button className="text-link magnetic" onClick={()=>go('/gallery')}>Open full gallery <ArrowUpRight size={16}/></button></div></div></section>
       <section className="section sponsors" id="sponsors"><SectionHead kicker="POWERED BY THE COMMUNITY" title={<>Backed by <span  style={{
-              backgroundImage: 'url(assets/bg.png)',
+              backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               WebkitBackgroundClip: 'text',
@@ -200,7 +209,7 @@ function HomePage(){
               display: 'inline-block'
             }}>bold builders.</span></>} text="Partner with CyberFest to put your brand in the room with the next generation of technology and security talent."/><div className="sponsor-wall">{sponsors.map((s,i)=><div className="sponsor reveal" key={s}><span>{i%3===0?'◆':i%3===1?'◉':'✦'}</span>{s}</div>)}</div><button className="text-link magnetic">Become a sponsor <ArrowUpRight size={16}/></button></section>
       <section className="section testimonials"><SectionHead kicker="PAST ATTENDEES" title={<>The kind of event <span  style={{
-              backgroundImage: 'url(assets/bg.png)',
+              backgroundImage: `url(${bgImage})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               WebkitBackgroundClip: 'text',
@@ -208,13 +217,13 @@ function HomePage(){
               color: 'transparent',
               display: 'inline-block'
             }}>people remember.</span></>} text="A few sample voices inspired by the reference design — replace these with real CyberFest attendee testimonials when available."/><div className="testimonial-grid">{[['“The sessions cut through the noise. I left with practical ideas I could take straight back to our security team.”','Security Lead'],['“The best part was the people. Students, engineers and industry folks all in one room, actually talking.”','Software Engineer'],['“It felt ambitious without feeling intimidating. Exactly what a growing cyber community needs.”','Cybersecurity Student']].map(([q,r],i)=><article className="quote-card reveal" key={i}><div className="stars">★★★★★</div><p>{q}</p><div className="quote-author"><span>{['AK','SR','HM'][i]}</span><div><b>{['Amina Khan','Saad Riaz','Hina Malik'][i]}</b><small>{r}</small></div></div></article>)}</div></section>
-      <section className="section venue"><div className="venue-card reveal"><div className="venue-copy"><span className="eyebrow">THE VENUE / DISHOVER</span><h2>A place built for <span>big ideas.</span></h2><p>CyberFest will bring the community together in Dishover this September. Final venue details and the exact address will be published with registration.</p><div className="venue-facts"><div><MapPin/><b>Dishover</b><small>Event location</small></div><div><CalendarDays/><b>September 2026</b><small>Event month</small></div><div><Users/><b>500+ capacity</b><small>Community scale</small></div></div></div><div className="venue-art"><img src="assets/logo.png" alt="CyberFest logo" className="venue-logo" style={{maxWidth:'100%',height:'auto',objectFit:'contain'}}/></div></div></section>
+      <section className="section venue"><div className="venue-card reveal"><div className="venue-copy"><span className="eyebrow">THE VENUE / DISHOVER</span><h2>A place built for <span>big ideas.</span></h2><p>CyberFest will bring the community together in Dishover this September. Final venue details and the exact address will be published with registration.</p><div className="venue-facts"><div><MapPin/><b>Dishover</b><small>Event location</small></div><div><CalendarDays/><b>September 2026</b><small>Event month</small></div><div><Users/><b>500+ capacity</b><small>Community scale</small></div></div></div><div className="venue-art"><img src={logoImage} alt="CyberFest logo" className="venue-logo" style={{maxWidth:'100%',height:'auto',objectFit:'contain'}}/></div></div></section>
       <section className="section faq" id="faq"><SectionHead kicker="FREQUENTLY ASKED QUESTIONS" title={<>You ask.<br/><span>We’ve got answers.</span></>} text="A few quick details about CyberFest. More event information will be added as September gets closer."/><div className="faq-list">{faqs.map(([q,a],i)=><div className={'faq-item '+(faqOpen===i?'active':'')} key={q}><button onClick={()=>setFaqOpen(faqOpen===i?-1:i)}><span>{q}</span><ChevronDown size={20}/></button><div className="faq-answer"><p>{a}</p></div></div>)}</div></section>
       <CTA/>
     </main><Footer/></div>
 }
 
-function CTA(){return <section className="cta" style={{backgroundImage:'url(assets/bg.png)', backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2>Don’t just watch<br/>the future. <span style={{color:'black'}}>shape it.</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ > One registration. Multiple CyberFest experiences.</div></div></section>}
+function CTA(){return <section className="cta" style={{backgroundImage:`url(${bgImage})`, backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2>Don’t just watch<br/>the future. <span style={{color:'black'}}>shape it.</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ > One registration. Multiple CyberFest experiences.</div></div></section>}
 
 function RegistrationPage(){
   const app=useMotion();
@@ -252,7 +261,7 @@ function GalleryPage(){
     </main><Footer/></div>
 }
 
-function Footer(){return <footer><div className="footer-main"><button className="brand brand-button" onClick={()=>go('/')}><img src="assets/stroke.png" alt="CyberFest logo" style={{width:'70px',height:'40px'}}/><span>CYBER<span>FEST</span></span><small>26</small></button><p>Cybersecurity, technology and the people building a safer digital future.</p><div className="footer-links"><button onClick={()=>go('/')}>Experience</button><button onClick={()=>{go('/')}}>Speakers</button><button onClick={()=>go('/')}>Agenda</button><button onClick={()=>go('/gallery')}>Gallery</button><button onClick={()=>go('/registration')}>Register</button></div><div className="socials"><a href="#" aria-label="LinkedIn"><Linkedin/></a><a href="#" aria-label="Instagram"><Instagram/></a><a href="#" aria-label="YouTube"><Youtube/></a></div></div><div className="footer-bottom"><span>© 2026 CyberFest. All rights reserved.</span><span>Designed for the CyberFest community.</span></div></footer>}
+function Footer(){return <footer><div className="footer-main"><button className="brand brand-button" onClick={()=>go('/')}><img src={strokeLogo} alt="CyberFest logo" style={{width:'70px',height:'40px'}}/><span>CYBER<span>FEST</span></span><small>26</small></button><p>Cybersecurity, technology and the people building a safer digital future.</p><div className="footer-links"><button onClick={()=>go('/')}>Experience</button><button onClick={()=>{go('/')}}>Speakers</button><button onClick={()=>go('/')}>Agenda</button><button onClick={()=>go('/gallery')}>Gallery</button><button onClick={()=>go('/registration')}>Register</button></div><div className="socials"><a href="#" aria-label="LinkedIn"><Linkedin/></a><a href="#" aria-label="Instagram"><Instagram/></a><a href="#" aria-label="YouTube"><Youtube/></a></div></div><div className="footer-bottom"><span>© 2026 CyberFest. All rights reserved.</span><span>Designed for the CyberFest community.</span></div></footer>}
 function SectionHead({kicker,title,text}){return <div className="section-head reveal"><span className="eyebrow">{kicker}</span><h2>{title}</h2><div className="head-bottom"><span className="line-grow"/><p>{text}</p></div></div>}
 function Stat({n,suffix,label}){return <div className="stat reveal"><strong><span data-count={Number(n)}>{n}</span>{suffix}</strong><small>{label}</small></div>}
 createRoot(document.getElementById('root')).render(<App/>);
