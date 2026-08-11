@@ -123,53 +123,109 @@ function isGoogleAppsScriptMessage(event){
 
 function submitRegistrationPayload(payload){
   return new Promise((resolve,reject)=>{
-    const iframeName=`cyberfest-registration-${payload.requestId}`;
-    const iframe=document.createElement('iframe');
-    const form=document.createElement('form');
-    let settled=false;
+    const iframeName = `cyberfest-registration-${payload.requestId}`;
+    const iframe = document.createElement('iframe');
+    const form = document.createElement('form');
+    let settled = false;
+    let fallbackIframe = null;
+    let fallbackForm = null;
 
-    const cleanup=()=>{
-      window.removeEventListener('message',onMessage);
-      iframe.remove();
-      form.remove();
+    const cleanup = () => {
+      window.removeEventListener('message', onMessage);
+      window.clearTimeout(timer);
+      if (iframe.parentNode) iframe.remove();
+      if (form.parentNode) form.remove();
+      if (fallbackIframe && fallbackIframe.parentNode) fallbackIframe.remove();
+      if (fallbackForm && fallbackForm.parentNode) fallbackForm.remove();
     };
 
-    const finish=(callback,value)=>{
-      if(settled) return;
-      settled=true;
-      window.clearTimeout(timer);
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
       cleanup();
       callback(value);
     };
 
-    const onMessage=(event)=>{
-      if(!isGoogleAppsScriptMessage(event)) return;
-      const data=event.data;
-      if(!data || data.source !== 'cyberfest-registration' || data.requestId !== payload.requestId) return;
-      finish(resolve,data);
+    const onMessage = (event) => {
+      if (!isGoogleAppsScriptMessage(event)) return;
+      if (event.source !== iframe.contentWindow && (!fallbackIframe || event.source !== fallbackIframe.contentWindow)) return;
+      const data = event.data;
+      if (!data || data.source !== 'cyberfest-registration' || data.requestId !== payload.requestId) return;
+      finish(resolve, data);
     };
 
-    const timer=window.setTimeout(()=>finish(reject,new Error('REGISTRATION_TIMEOUT')),REGISTRATION_TIMEOUT_MS);
+    const startStatusProbe = () => {
+      return new Promise((resolveProbe, rejectProbe) => {
+        if (settled) return rejectProbe(new Error('ALREADY_SETTLED'));
 
-    iframe.name=iframeName;
-    iframe.style.display='none';
-    iframe.setAttribute('aria-hidden','true');
+        const requestUrl = `${GOOGLE_SHEETS_WEB_APP_URL}?requestId=${encodeURIComponent(payload.requestId)}&clientOrigin=${encodeURIComponent(window.location.origin)}`;
+        fallbackIframe = document.createElement('iframe');
+        fallbackForm = document.createElement('form');
 
-    form.method='POST';
-    form.action=GOOGLE_SHEETS_WEB_APP_URL;
-    form.target=iframeName;
-    form.acceptCharset='UTF-8';
-    form.style.display='none';
+        fallbackIframe.name = `cyberfest-registration-status-${payload.requestId}`;
+        fallbackIframe.style.display = 'none';
+        fallbackIframe.setAttribute('aria-hidden', 'true');
 
-    Object.entries(payload).forEach(([name,value])=>{
-      const input=document.createElement('input');
-      input.type='hidden';
-      input.name=name;
-      input.value=String(value ?? '');
+        fallbackForm.method = 'GET';
+        fallbackForm.action = requestUrl;
+        fallbackForm.target = fallbackIframe.name;
+        fallbackForm.acceptCharset = 'UTF-8';
+        fallbackForm.style.display = 'none';
+
+        document.body.appendChild(fallbackIframe);
+        document.body.appendChild(fallbackForm);
+        fallbackForm.submit();
+
+        const fallbackTimer = window.setTimeout(() => {
+          if (settled) return;
+          if (fallbackIframe.parentNode) fallbackIframe.remove();
+          if (fallbackForm.parentNode) fallbackForm.remove();
+          rejectProbe(new Error('REGISTRATION_TIMEOUT'));
+        }, 5000);
+
+        const onFallbackMessage = (event) => {
+          if (!isGoogleAppsScriptMessage(event)) return;
+          if (event.source !== fallbackIframe.contentWindow) return;
+          const data = event.data;
+          if (!data || data.source !== 'cyberfest-registration' || data.requestId !== payload.requestId) return;
+          window.removeEventListener('message', onFallbackMessage);
+          window.clearTimeout(fallbackTimer);
+          resolveProbe(data);
+        };
+
+        window.addEventListener('message', onFallbackMessage);
+      });
+    };
+
+    const timer = window.setTimeout(async () => {
+      if (settled) return;
+      try {
+        const fallbackResponse = await startStatusProbe();
+        finish(resolve, fallbackResponse);
+      } catch (error) {
+        finish(reject, new Error('REGISTRATION_TIMEOUT'));
+      }
+    }, REGISTRATION_TIMEOUT_MS);
+
+    iframe.name = iframeName;
+    iframe.style.display = 'none';
+    iframe.setAttribute('aria-hidden', 'true');
+
+    form.method = 'POST';
+    form.action = GOOGLE_SHEETS_WEB_APP_URL;
+    form.target = iframeName;
+    form.acceptCharset = 'UTF-8';
+    form.style.display = 'none';
+
+    Object.entries(payload).forEach(([name, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = String(value ?? '');
       form.appendChild(input);
     });
 
-    window.addEventListener('message',onMessage);
+    window.addEventListener('message', onMessage);
     document.body.appendChild(iframe);
     document.body.appendChild(form);
     form.submit();
@@ -241,16 +297,19 @@ function useMotion(){
     window.addEventListener('pointermove',onMove);
     gsap.ticker.add(raf); gsap.ticker.lagSmoothing(0);
     const ctx=gsap.context(()=>{
-      gsap.from('.nav-inner',{y:-35,opacity:0,duration:1,ease:'power3.out',delay:.15});
-      gsap.from('.page-hero .hero-kicker',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.3});
-      gsap.from('.page-hero .hero-title .line',{yPercent:110,opacity:0,stagger:.08,duration:1.05,ease:'power4.out',delay:.42});
-      gsap.from('.page-hero .hero-copy',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.8});
-      gsap.from('.page-hero .hero-actions',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.95});
-      gsap.to('.hero-orb',{yPercent:18,rotate:20,ease:'none',scrollTrigger:{trigger:'.page-hero',start:'top top',end:'bottom top',scrub:1}});
+      const has=(selector)=>document.querySelector(selector);
+      const from=(selector,vars)=>{if(has(selector)) gsap.from(selector,vars);};
+      const to=(selector,vars)=>{if(has(selector)) gsap.to(selector,vars);};
+      from('.nav-inner',{y:-35,opacity:0,duration:1,ease:'power3.out',delay:.15});
+      from('.page-hero .hero-kicker',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.3});
+      from('.page-hero .hero-title .line',{yPercent:110,opacity:0,stagger:.08,duration:1.05,ease:'power4.out',delay:.42});
+      from('.page-hero .hero-copy',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.8});
+      from('.page-hero .hero-actions',{y:25,opacity:0,duration:.8,ease:'power3.out',delay:.95});
+      to('.hero-orb',{yPercent:18,rotate:20,ease:'none',scrollTrigger:{trigger:'.page-hero',start:'top top',end:'bottom top',scrub:1}});
       gsap.utils.toArray('.reveal').forEach((el,i)=>gsap.from(el,{y:55,opacity:0,duration:.9,ease:'power3.out',delay:(i%4)*.05,scrollTrigger:{trigger:el,start:'top 86%',once:true}}));
       gsap.utils.toArray('.line-grow').forEach(el=>gsap.from(el,{scaleX:0,transformOrigin:'left center',duration:1.1,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 90%',once:true}}));
-      gsap.to('.marquee-track',{xPercent:-25,ease:'none',duration:28,repeat:-1});
-      gsap.to('.grid-glow',{yPercent:12,ease:'none',scrollTrigger:{trigger:'.experience',start:'top bottom',end:'bottom top',scrub:1}});
+      to('.marquee-track',{xPercent:-25,ease:'none',duration:28,repeat:-1});
+      if(has('.grid-glow') && has('.experience')) gsap.to('.grid-glow',{yPercent:12,ease:'none',scrollTrigger:{trigger:'.experience',start:'top bottom',end:'bottom top',scrub:1}});
       document.querySelectorAll('[data-count]').forEach(el=>{const end=Number(el.dataset.count),obj={v:0};gsap.to(obj,{v:end,duration:2,ease:'power2.out',scrollTrigger:{trigger:el,start:'top 88%',once:true},onUpdate:()=>el.textContent=Math.floor(obj.v).toLocaleString()});});
       document.querySelectorAll('.magnetic').forEach(el=>{const move=(e)=>{const r=el.getBoundingClientRect();const x=(e.clientX-r.left-r.width/2)*.12;const y=(e.clientY-r.top-r.height/2)*.12;el.style.transform=`translate(${x}px,${y}px)`};const leave=()=>el.style.transform='translate(0,0)';el.addEventListener('pointermove',move);el.addEventListener('pointerleave',leave);});
       document.querySelectorAll('.tilt').forEach(el=>{const move=(e)=>{const r=el.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5;const y=(e.clientY-r.top)/r.height-.5;el.style.transform=`perspective(900px) rotateX(${y*-5}deg) rotateY(${x*5}deg) translateY(-3px)`};const leave=()=>el.style.transform='perspective(900px) rotateX(0) rotateY(0) translateY(0)';el.addEventListener('pointermove',move);el.addEventListener('pointerleave',leave);});
