@@ -105,6 +105,9 @@ const partnerOptions = [
 
 const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '') || '';
 
+// Google Apps Script Web App endpoint used to store CyberFest registrations in Google Sheets.
+const GOOGLE_SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby3UwGAL0lPs4C801Y4URo910kP_By8iJwqeXCkh_rZXyqSkzQsvSixBgQudOo8Z4k/exec';
+
 function getCurrentPath(){
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
   if (basePath && pathname.startsWith(basePath)) {
@@ -271,31 +274,147 @@ function HomePage(){
     </main><Footer/></div>
 }
 
-function CTA(){return <section className="cta" style={{backgroundImage:`url(${bgImage})`, backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2 style={{fontFamily:'Buchery, "Space Grotesk", sans-serif', lineHeight:1.05, letterSpacing:'-0.02em'}}># Cyber ka Scene<br/><span style={{color:'black'}}> ON Hay!</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ ><b> Don’t just watch the future. Shape it.</b></div></div></section>}
+function CTA(){return <section className="cta" style={{backgroundImage:`url(${bgImage})`, backgroundSize:'cover', backgroundPosition:'center'}}><div className="cta-grid"/><div className="cta-inner"><span className="eyebrow" style={{color:'black'}}>SEPTEMBER 2026 / DISHOVER</span><h2 style={{fontFamily:'Buchery, "Space Grotesk", sans-serif', lineHeight:1.05, letterSpacing:'-0.02em'}}><span style={{color:'black'}}>#</span> Cyber ka Scene<br/><span style={{color:'black'}}> ON HAI!</span></h2><p style={{color:'black'}}>Choose the CyberFest activities you want to join. You can register for the main event, CTF, workshops and other experiences in one form.</p><button className="btn btn-primary magnetic" onClick={()=>go('/registration')}>Register Yourself <ArrowUpRight size={17}/></button><div className="cta-note" style = {{color:'black'}}><Users size={15}/ ><b> Don’t just watch the future. Shape it.</b></div></div></section>}
 
 function RegistrationPage(){
   const app=useMotion();
   const [selected,setSelected]=useState(['cyberfest']);
   const [submitted,setSubmitted]=useState(false);
+  const [submitting,setSubmitting]=useState(false);
+  const [error,setError]=useState('');
   const toggle=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
-  const submit=(e)=>{e.preventDefault();setSubmitted(true);window.scrollTo({top:0,behavior:'smooth'});};
+
+  const submit=async(e)=>{
+    e.preventDefault();
+    if(submitting) return;
+    setError('');
+    setSubmitted(false);
+
+    const form=e.currentTarget;
+    const formData=new FormData(form);
+
+    // Honeypot: real users never see/fill this field. Bots often do.
+    if(String(formData.get('website') || '').trim() !== ''){
+      setSubmitted(true);
+      form.reset();
+      setSelected(['cyberfest']);
+      return;
+    }
+
+    if(selected.length===0){
+      setError('Please select at least one CyberFest experience.');
+      return;
+    }
+
+    const fullName=String(formData.get('name') || '').trim();
+    const email=String(formData.get('email') || '').trim().toLowerCase();
+    const phone=String(formData.get('phone') || '').trim();
+    const university=String(formData.get('organization') || '').trim();
+    const city=String(formData.get('city') || '').trim();
+    const level=String(formData.get('level') || '').trim();
+    const notes=String(formData.get('notes') || '').trim();
+
+    // Basic client-side limits reduce accidental/automated abuse.
+    if(fullName.length < 2 || fullName.length > 100){
+      setError('Please enter a valid full name.');
+      return;
+    }
+    if(email.length > 160 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if(phone.length > 30){
+      setError('Please enter a valid phone number.');
+      return;
+    }
+    if(university.length > 150 || city.length > 80 || notes.length > 1000){
+      setError('One or more fields are too long.');
+      return;
+    }
+
+    // Client-side cooldown. This is only an extra layer; server-side limits are also required.
+    const cooldownKey='cyberfest_registration_last_submit';
+    const last=Number(localStorage.getItem(cooldownKey) || 0);
+    if(Date.now()-last < 30000){
+      setError('Please wait 30 seconds before submitting another registration.');
+      return;
+    }
+
+    const payload={
+      fullName,email,phone,university,city,level,notes,
+      cyberfest:selected.includes('cyberfest'),
+      ctf:selected.includes('ctf'),
+      workshop:selected.includes('workshops'),
+      networking:selected.includes('networking'),
+      speakers:selected.includes('speakers'),
+      student:selected.includes('student'),
+      // Server-side Apps Script checks this field as a honeypot.
+      website:''
+    };
+
+    setSubmitting(true);
+
+    try{
+      // URL-encoded POST avoids CORS preflight with Google Apps Script.
+      // no-cors means the browser cannot read the response; a resolved fetch means
+      // the request was handed off successfully. The server validates and stores it.
+      const body=new URLSearchParams({
+        fullName:payload.fullName,
+        email:payload.email,
+        phone:payload.phone,
+        university:payload.university,
+        city:payload.city,
+        level:payload.level,
+        notes:payload.notes,
+        cyberfest:payload.cyberfest?'Yes':'No',
+        ctf:payload.ctf?'Yes':'No',
+        workshop:payload.workshop?'Yes':'No',
+        networking:payload.networking?'Yes':'No',
+        speakers:payload.speakers?'Yes':'No',
+        student:payload.student?'Yes':'No',
+        website:''
+      });
+
+      await fetch(GOOGLE_SHEETS_WEB_APP_URL,{
+        method:'POST',
+        mode:'no-cors',
+        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+        body:body.toString(),
+        keepalive:true
+      });
+
+      localStorage.setItem(cooldownKey,String(Date.now()));
+      setSubmitted(true);
+      form.reset();
+      setSelected(['cyberfest']);
+      window.scrollTo({top:0,behavior:'smooth'});
+    }catch(error){
+      console.error('CyberFest registration submission failed:',error);
+      setError('Registration could not be submitted. Please check your connection and try again.');
+    }finally{
+      setSubmitting(false);
+    }
+  };
+
   return <div ref={app} className="site inner-page"><div className="cursor-glow"/><Header active="registration"/>
     <main>
       <section className="inner-hero page-hero"><div className="hero-bg-grid"/><div className="hero-orb"/><div className="inner-hero-content"><span className="eyebrow">CYBERFEST 2026 / REGISTRATION</span><h1 className="inner-title">Register <span>yourself.</span><br/>Choose your experience.</h1><p>There are no ticket tiers or ticket sales here. Tell us what you want to be part of and register once for the CyberFest experiences that interest you.</p><div className="hero-actions"><button className="btn btn-ghost magnetic" onClick={()=>go('/')}>Back to CyberFest <ArrowRight size={17}/></button><button className="btn btn-primary magnetic" onClick={()=>go('/vip-registration')}>VIP Guest <Sparkles size={16}/></button><button className="btn btn-ghost magnetic" onClick={()=>go('/speaker-registration')}>Register as Speaker <Mic2 size={16}/></button></div></div></section>
       <section className="registration-section section"><div className="registration-layout">
         <div className="registration-intro reveal"><span className="eyebrow">01 / SELECT EXPERIENCES</span><h2>One form.<br/><span>Multiple choices.</span></h2><p>Select everything you want to attend. You can choose CyberFest itself, CTF, workshops, networking and student-focused activities together.</p><div className="pathway-mini"><button onClick={()=>go('/vip-registration')}><Sparkles size={15}/> VIP Guest slots</button><button onClick={()=>go('/speaker-registration')}><Mic2 size={15}/> Speaker registration</button></div><div className="selection-count"><strong>{selected.length}</strong><span>experience{selected.length===1?'':'s'} selected</span></div></div>
-        <form className="registration-form" onSubmit={submit}>
+        <form className="registration-form" onSubmit={submit} noValidate>
+          {/* Honeypot: hidden from normal users; never fill this field. */}
+          <div className="hp-field" aria-hidden="true"><label>Website<input tabIndex="-1" autoComplete="off" name="website"/></label></div>
           <div className="form-block"><span className="form-label">WHAT DO YOU WANT TO JOIN?</span><div className="option-grid">{registrationOptions.map(({id,title,desc,icon:Icon})=>{const active=selected.includes(id);return <button type="button" className={'register-option '+(active?'selected':'')} key={id} onClick={()=>toggle(id)}><span className="option-icon"><Icon size={20}/></span><span className="option-text"><b>{title}</b><small>{desc}</small></span><span className="option-check">{active?<Check size={15}/>:null}</span></button>})}</div></div>
-          <div className="form-block"><span className="form-label">YOUR DETAILS</span><div className="form-grid"><label>Full Name<input required name="name" placeholder="Your full name"/></label><label>Email Address<input required type="email" name="email" placeholder="you@example.com"/></label><label>Phone Number<input name="phone" placeholder="+92 3XX XXXXXXX"/></label><label>Organization / University<input name="organization" placeholder="Company, university or community"/></label><label>City<input name="city" placeholder="Peshawar"/></label><label>Experience Level<select name="level" defaultValue="student"><option value="student">Student / Beginner</option><option value="intermediate">Intermediate</option><option value="professional">Professional</option><option value="expert">Security Expert / Researcher</option></select></label></div></div>
-          <div className="form-block"><span className="form-label">CTF / WORKSHOP NOTES</span><label className="full-label">Anything we should know?<textarea name="notes" placeholder="Tell us about your CTF experience, interests or accessibility needs..." rows="5"/></label></div>
-          <div className="form-actions"><button className="btn btn-primary magnetic" disabled={selected.length===0}>Submit Registration <Send size={16}/></button><small>By registering, you agree to receive CyberFest event updates and registration-related communication.</small></div>
-          {submitted&&<div className="success-panel"><Check/><div><b>Registration captured in this demo.</b><span>Connect this form to your backend/API to store registrations and send confirmations.</span></div></div>}
+          <div className="form-block"><span className="form-label">YOUR DETAILS</span><div className="form-grid"><label>Full Name<input required minLength="2" maxLength="100" name="name" autoComplete="name" placeholder="Your full name"/></label><label>Email Address<input required maxLength="160" type="email" name="email" autoComplete="email" placeholder="you@example.com"/></label><label>Phone Number<input maxLength="30" name="phone" autoComplete="tel" placeholder="+92 3XX XXXXXXX"/></label><label>Organization / University<input maxLength="150" name="organization" autoComplete="organization" placeholder="Company, university or community"/></label><label>City<input maxLength="80" name="city" autoComplete="address-level2" placeholder="Peshawar"/></label><label>Experience Level<select name="level" defaultValue="student"><option value="student">Student / Beginner</option><option value="intermediate">Intermediate</option><option value="professional">Professional</option><option value="expert">Security Expert / Researcher</option></select></label></div></div>
+          <div className="form-block"><span className="form-label">CTF / WORKSHOP NOTES</span><label className="full-label">Anything we should know?<textarea maxLength="1000" name="notes" placeholder="Tell us about your CTF experience, interests or accessibility needs..." rows="5"/></label></div>
+          <div className="form-actions"><button className="btn btn-primary magnetic" type="submit" disabled={selected.length===0 || submitting}>{submitting?'Submitting...':'Submit Registration'} {!submitting&&<Send size={16}/>}</button><small>By registering, you agree to receive CyberFest event updates and registration-related communication.</small></div>
+          {error&&<div className="error-panel" role="alert"><span>{error}</span></div>}
+          {submitted&&<div className="success-panel" role="status"><Check/><div><b>Registration submitted successfully.</b><span>Your details have been sent to the CyberFest registration sheet.</span></div></div>}
         </form>
       </div></section>
-      <section className="section registration-note"><div className="note-card reveal"><Sparkles/><div><span className="eyebrow">BUILT FOR CYBERFEST</span><h3>Register once. Pick more than one thing.</h3><p>For the final production version, this form can connect to Firebase, MongoDB, Google Sheets, a custom API or any registration backend you choose.</p></div></div></section>
+      <section className="section registration-note"><div className="note-card reveal"><Sparkles/><div><span className="eyebrow">BUILT FOR CYBERFEST</span><h3>Register once. Pick more than one thing.</h3><p>Your registration is recorded in the CyberFest Google Sheet so the team can track registrations directly.</p></div></div></section>
     </main><Footer/></div>
 }
-
 function VipRegistrationPage(){
   const app=useMotion();
   const [submitted,setSubmitted]=useState(false);
