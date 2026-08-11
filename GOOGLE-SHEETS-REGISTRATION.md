@@ -1,51 +1,35 @@
 # CyberFest Google Sheets Registration
 
-The general registration form now posts to the supplied Google Apps Script Web App.
+The public registration form posts to the Google Apps Script Web App endpoint configured in `src/main.jsx`.
 
-## Required Google Apps Script
+## Required Apps Script
 
-Replace the Apps Script code with:
+Use the hardened Apps Script in `google-apps-script/Code.gs`.
 
-```javascript
-function doPost(e) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
-    const data = JSON.parse(e.postData.contents);
+Deployment steps:
 
-    sheet.appendRow([
-      new Date(),
-      data.fullName || "",
-      data.email || "",
-      data.phone || "",
-      data.university || "",
-      data.city || "",
-      data.cyberfest ? "Yes" : "No",
-      data.ctf ? "Yes" : "No",
-      data.workshop ? "Yes" : "No",
-      data.networking ? "Yes" : "No",
-      data.speakers ? "Yes" : "No",
-      data.student ? "Yes" : "No",
-      data.level || "",
-      data.notes || ""
-    ]);
+1. Open the CyberFest Google Sheet.
+2. Go to Extensions -> Apps Script.
+3. Replace the Apps Script code with `google-apps-script/Code.gs`.
+4. Confirm the sheet tab is named `Sheet1`.
+5. Save the script.
+6. Deploy -> Manage deployments -> Edit.
+7. Select a new version and deploy.
+8. Use Execute as: Me.
+9. Use Who has access: Anyone.
+10. Keep the existing Web App URL in `src/main.jsx`.
 
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: true }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ success: false, error: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}
-```
-
-## Sheet headers
+## Sheet Headers
 
 Use these headers in row 1:
 
 `Timestamp | Full Name | Email | Phone | University | City | CyberFest | CTF | Workshop | Networking | Speaker Sessions | Student Community | Experience Level | Notes`
 
-After changing the Apps Script, deploy a **new version** of the Web App and keep **Execute as: Me** and **Who has access: Anyone**.
+## Optional Turnstile
 
-The website endpoint is already configured in `src/main.jsx`.
+Cloudflare Turnstile requires two values:
+
+- Frontend public site key: set `VITE_TURNSTILE_SITE_KEY` before building the Vite app.
+- Server secret key: set Apps Script Script Property `TURNSTILE_SECRET`.
+
+Never put the Turnstile secret key in React or any file that ships to GitHub Pages.

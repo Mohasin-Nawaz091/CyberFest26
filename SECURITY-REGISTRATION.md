@@ -1,27 +1,33 @@
-# CyberFest 2026 — Secure Google Sheets Registration
+# CyberFest 2026 Secure Registration
 
-This version hardens the public registration form while keeping Google Sheets as the database.
+This project is a React + Vite static site deployed on GitHub Pages. Registration data flows from the browser to Google Apps Script and then to Google Sheets. There is no Node backend, SQL database, MongoDB, authentication system, or file upload flow.
 
-## What is protected
+## Protections Implemented
 
-- Server-side validation in Google Apps Script.
-- Hidden honeypot field to reject common bots.
-- Maximum lengths for every field.
-- Email and experience-level validation.
-- At least one CyberFest activity required.
-- Per-email cooldown: 10 minutes.
-- Global burst limit: 60 accepted requests/minute.
-- LockService prevents concurrent writes/race conditions.
-- Client-side validation and a 30-second cooldown.
-- URL-encoded POST avoids unnecessary CORS preflight.
+- Server-side Apps Script validation for required fields, maximum lengths, email, phone, level, activity values, and selected activity count.
+- Unexpected form fields are rejected by Apps Script.
+- Honeypot field rejects common bot submissions.
+- Client-side validation catches common mistakes before submission.
+- Submit button is disabled while submitting to prevent double clicks.
+- Client-side cooldown stores only a timestamp, not personal data.
+- Apps Script global burst limit and per-email cooldown.
+- Apps Script persistent duplicate check by email before writing to the sheet.
+- LockService wraps duplicate checks and sheet writes to prevent race-condition duplicates.
+- Spreadsheet formula injection is neutralized before writing user-controlled text to Google Sheets.
+- Safe generic error messages are returned to the browser.
+- GitHub Pages compatible iframe/postMessage response flow allows the frontend to distinguish success, validation errors, duplicate/rate-limit responses, and server errors.
+- Optional Cloudflare Turnstile integration point is available without exposing the secret in frontend code.
+- Meta CSP is included for the current static frontend, Google Fonts, Unsplash images, Apps Script form target/frame, and optional Turnstile.
 
-## Important limitation
+## Important Limitations
 
-Google Apps Script is NOT a DDoS firewall. A determined attacker can still send traffic directly to the public `/exec` URL and potentially consume Apps Script quotas. For a high-profile public event, the next security layer should be Cloudflare Turnstile (CAPTCHA-style bot verification) and, ideally, a Cloudflare Worker/rate limiter in front of the Apps Script endpoint.
+Google Apps Script is still a public API endpoint. It is not a DDoS firewall, and frontend JavaScript cannot stop network-level abuse. For a high-profile public event, use Cloudflare/WAF/CDN protections and consider putting a Cloudflare Worker with rate limiting in front of Apps Script.
 
-Do not put a secret API key in the React frontend; anything shipped to the browser is public.
+GitHub Pages does not let this repository configure real HTTP security headers. The included CSP is a meta tag for browser-side enforcement; stronger headers require hosting behind infrastructure that can set headers, such as Cloudflare.
 
-## Apps Script deployment
+Origin/Referer headers are not reliably available to Apps Script `doPost(e)`. The posted `clientOrigin` is used only to choose a safe `postMessage` target, not as a primary security control.
+
+## Apps Script Deployment
 
 1. Open the CyberFest Google Sheet.
 2. Extensions -> Apps Script.
@@ -32,14 +38,30 @@ Do not put a secret API key in the React frontend; anything shipped to the brows
 7. Select a new version and deploy.
 8. Execute as: Me.
 9. Who has access: Anyone.
-10. Keep the existing Web App URL in the React app.
 
-## Sheet columns
+## Turnstile Setup
 
-Timestamp | Full Name | Email | Phone | University | City | CyberFest | CTF | Workshop | Networking | Speaker Sessions | Student Community | Experience Level | Notes
+Turnstile is optional until credentials are configured.
 
-## Frontend
+Frontend:
 
-The registration form now sends `application/x-www-form-urlencoded` data to Apps Script and treats a successful network handoff as submission success. Google Apps Script's `no-cors` response cannot be read by the browser, so the frontend cannot display server-side rejection details. The server still validates and rejects bad requests before writing.
+```powershell
+$env:VITE_TURNSTILE_SITE_KEY='your-public-site-key'
+npm run build
+```
 
-For the strongest production setup, add Cloudflare Turnstile before launch.
+Apps Script:
+
+1. Apps Script -> Project Settings -> Script Properties.
+2. Add `TURNSTILE_SECRET`.
+3. Set it to your Cloudflare Turnstile secret key.
+4. Deploy a new Apps Script version.
+
+If `TURNSTILE_SECRET` is absent, Apps Script does not require a token. If `VITE_TURNSTILE_SITE_KEY` is absent, the frontend does not render the Turnstile widget.
+
+## Not Applicable To Current Architecture
+
+- SQL/NoSQL injection: no SQL, MongoDB, Firebase, or similar database is used.
+- File upload security: the current form has no file uploads.
+- SSRF/RCE/command injection/directory traversal in this repo: the static frontend performs no server-side URL fetching, OS command execution, dynamic filesystem access, or server-side processing.
+- Brute-force login protection: there is no authentication or login flow.

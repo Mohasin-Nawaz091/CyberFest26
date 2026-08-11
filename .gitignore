@@ -4,6 +4,7 @@ build/
 .vite/
 .env
 .env.*
+google-apps-script/
 .DS_Store
 Thumbs.db
 *.log

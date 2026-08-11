@@ -18,3 +18,4 @@ button{font:inherit}.brand-button{border:0;cursor:pointer}.nav-links button,.foo
 /* Registration security UI */
 .hp-field{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important}
 .error-panel{margin-top:14px;padding:14px 16px;border:1px solid rgba(255,80,80,.45);border-radius:12px;background:rgba(255,40,40,.06);color:#ffb4b4}
+.verification-block{overflow:visible}

@@ -107,6 +107,106 @@ const basePath = import.meta.env.BASE_URL.replace(/\/+$/, '') || '';
 
 // Google Apps Script Web App endpoint used to store CyberFest registrations in Google Sheets.
 const GOOGLE_SHEETS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycby3UwGAL0lPs4C801Y4URo910kP_By8iJwqeXCkh_rZXyqSkzQsvSixBgQudOo8Z4k/exec';
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || '';
+const TURNSTILE_SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+const REGISTRATION_TIMEOUT_MS = 18000;
+const registrationOptionIds = registrationOptions.map(({id}) => id);
+
+function createRequestId(){
+  if(window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function isGoogleAppsScriptMessage(event){
+  return event.origin === 'https://script.google.com' || /^https:\/\/[^/]+\.googleusercontent\.com$/.test(event.origin);
+}
+
+function submitRegistrationPayload(payload){
+  return new Promise((resolve,reject)=>{
+    const iframeName=`cyberfest-registration-${payload.requestId}`;
+    const iframe=document.createElement('iframe');
+    const form=document.createElement('form');
+    let settled=false;
+
+    const cleanup=()=>{
+      window.removeEventListener('message',onMessage);
+      iframe.remove();
+      form.remove();
+    };
+
+    const finish=(callback,value)=>{
+      if(settled) return;
+      settled=true;
+      window.clearTimeout(timer);
+      cleanup();
+      callback(value);
+    };
+
+    const onMessage=(event)=>{
+      if(!isGoogleAppsScriptMessage(event)) return;
+      const data=event.data;
+      if(!data || data.source !== 'cyberfest-registration' || data.requestId !== payload.requestId) return;
+      finish(resolve,data);
+    };
+
+    const timer=window.setTimeout(()=>finish(reject,new Error('REGISTRATION_TIMEOUT')),REGISTRATION_TIMEOUT_MS);
+
+    iframe.name=iframeName;
+    iframe.style.display='none';
+    iframe.setAttribute('aria-hidden','true');
+
+    form.method='POST';
+    form.action=GOOGLE_SHEETS_WEB_APP_URL;
+    form.target=iframeName;
+    form.acceptCharset='UTF-8';
+    form.style.display='none';
+
+    Object.entries(payload).forEach(([name,value])=>{
+      const input=document.createElement('input');
+      input.type='hidden';
+      input.name=name;
+      input.value=String(value ?? '');
+      form.appendChild(input);
+    });
+
+    window.addEventListener('message',onMessage);
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+    form.submit();
+  });
+}
+
+function getRegistrationErrorMessage(response){
+  const code=response?.errorCode || 'SERVER_ERROR';
+  if(code === 'VALIDATION_ERROR') return response.error || 'Please check the form and try again.';
+  if(code === 'DUPLICATE') return 'A registration with these details was already submitted or was submitted recently.';
+  if(code === 'RATE_LIMITED') return 'Too many registrations are being submitted right now. Please wait and try again.';
+  if(code === 'BOT_DETECTED') return 'Registration could not be accepted. Please refresh the page and try again.';
+  if(code === 'TURNSTILE_REQUIRED') return 'Please complete the verification and try again.';
+  if(code === 'TURNSTILE_FAILED') return 'Verification failed. Please try again.';
+  if(code === 'SERVER_BUSY') return 'Registration is busy right now. Please try again in a moment.';
+  return 'Registration could not be submitted. Please try again later.';
+}
+
+function loadTurnstile(){
+  if(!TURNSTILE_SITE_KEY) return Promise.resolve(null);
+  if(window.turnstile) return Promise.resolve(window.turnstile);
+  return new Promise((resolve,reject)=>{
+    const existing=document.querySelector(`script[src="${TURNSTILE_SCRIPT_SRC}"]`);
+    if(existing){
+      existing.addEventListener('load',()=>resolve(window.turnstile),{once:true});
+      existing.addEventListener('error',reject,{once:true});
+      return;
+    }
+    const script=document.createElement('script');
+    script.src=TURNSTILE_SCRIPT_SRC;
+    script.async=true;
+    script.defer=true;
+    script.onload=()=>resolve(window.turnstile);
+    script.onerror=reject;
+    document.head.appendChild(script);
+  });
+}
 
 function getCurrentPath(){
   const pathname = window.location.pathname.replace(/\/+$/, '') || '/';
@@ -278,11 +378,35 @@ function CTA(){return <section className="cta" style={{backgroundImage:`url(${bg
 
 function RegistrationPage(){
   const app=useMotion();
+  const turnstileRef=useRef(null);
+  const turnstileWidget=useRef(null);
   const [selected,setSelected]=useState(['cyberfest']);
   const [submitted,setSubmitted]=useState(false);
   const [submitting,setSubmitting]=useState(false);
   const [error,setError]=useState('');
+  const [turnstileToken,setTurnstileToken]=useState('');
   const toggle=(id)=>setSelected(s=>s.includes(id)?s.filter(x=>x!==id):[...s,id]);
+
+  useEffect(()=>{
+    let cancelled=false;
+    if(!TURNSTILE_SITE_KEY || !turnstileRef.current) return undefined;
+    loadTurnstile().then((turnstile)=>{
+      if(cancelled || !turnstile || turnstileWidget.current !== null) return;
+      turnstileWidget.current=turnstile.render(turnstileRef.current,{
+        sitekey:TURNSTILE_SITE_KEY,
+        callback:(token)=>setTurnstileToken(token),
+        'expired-callback':()=>setTurnstileToken(''),
+        'error-callback':()=>setTurnstileToken('')
+      });
+    }).catch(()=>setError('Verification could not load. Please refresh the page and try again.'));
+    return()=>{
+      cancelled=true;
+      if(window.turnstile && turnstileWidget.current !== null){
+        try{window.turnstile.remove(turnstileWidget.current);}catch(_){}
+        turnstileWidget.current=null;
+      }
+    };
+  },[]);
 
   const submit=async(e)=>{
     e.preventDefault();
@@ -301,7 +425,7 @@ function RegistrationPage(){
       return;
     }
 
-    if(selected.length===0){
+    if(selected.length===0 || selected.some(id=>!registrationOptionIds.includes(id))){
       setError('Please select at least one CyberFest experience.');
       return;
     }
@@ -323,7 +447,7 @@ function RegistrationPage(){
       setError('Please enter a valid email address.');
       return;
     }
-    if(phone.length > 30){
+    if(phone && !/^[+()\d\s.-]{7,30}$/.test(phone)){
       setError('Please enter a valid phone number.');
       return;
     }
@@ -340,57 +464,54 @@ function RegistrationPage(){
       return;
     }
 
+    if(TURNSTILE_SITE_KEY && !turnstileToken){
+      setError('Please complete the verification before submitting.');
+      return;
+    }
+
     const payload={
+      requestId:createRequestId(),
+      clientOrigin:window.location.origin,
       fullName,email,phone,university,city,level,notes,
-      cyberfest:selected.includes('cyberfest'),
-      ctf:selected.includes('ctf'),
-      workshop:selected.includes('workshops'),
-      networking:selected.includes('networking'),
-      speakers:selected.includes('speakers'),
-      student:selected.includes('student'),
+      cyberfest:selected.includes('cyberfest')?'Yes':'No',
+      ctf:selected.includes('ctf')?'Yes':'No',
+      workshop:selected.includes('workshops')?'Yes':'No',
+      networking:selected.includes('networking')?'Yes':'No',
+      speakers:selected.includes('speakers')?'Yes':'No',
+      student:selected.includes('student')?'Yes':'No',
       // Server-side Apps Script checks this field as a honeypot.
-      website:''
+      website:'',
+      turnstileToken
     };
 
     setSubmitting(true);
 
     try{
-      // URL-encoded POST avoids CORS preflight with Google Apps Script.
-      // no-cors means the browser cannot read the response; a resolved fetch means
-      // the request was handed off successfully. The server validates and stores it.
-      const body=new URLSearchParams({
-        fullName:payload.fullName,
-        email:payload.email,
-        phone:payload.phone,
-        university:payload.university,
-        city:payload.city,
-        level:payload.level,
-        notes:payload.notes,
-        cyberfest:payload.cyberfest?'Yes':'No',
-        ctf:payload.ctf?'Yes':'No',
-        workshop:payload.workshop?'Yes':'No',
-        networking:payload.networking?'Yes':'No',
-        speakers:payload.speakers?'Yes':'No',
-        student:payload.student?'Yes':'No',
-        website:''
-      });
-
-      await fetch(GOOGLE_SHEETS_WEB_APP_URL,{
-        method:'POST',
-        mode:'no-cors',
-        headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-        body:body.toString(),
-        keepalive:true
-      });
+      const response=await submitRegistrationPayload(payload);
+      if(!response.success){
+        setError(getRegistrationErrorMessage(response));
+        return;
+      }
 
       localStorage.setItem(cooldownKey,String(Date.now()));
       setSubmitted(true);
       form.reset();
       setSelected(['cyberfest']);
+      setTurnstileToken('');
+      if(window.turnstile && turnstileWidget.current !== null){
+        try{window.turnstile.reset(turnstileWidget.current);}catch(_){}
+      }
       window.scrollTo({top:0,behavior:'smooth'});
     }catch(error){
-      console.error('CyberFest registration submission failed:',error);
-      setError('Registration could not be submitted. Please check your connection and try again.');
+      if(error?.message === 'REGISTRATION_TIMEOUT'){
+        setError('Registration could not be confirmed. Please wait a moment before trying again.');
+      }else{
+        setError('Registration could not be submitted. Please check your connection and try again.');
+      }
+      if(window.turnstile && turnstileWidget.current !== null){
+        try{window.turnstile.reset(turnstileWidget.current);}catch(_){}
+      }
+      setTurnstileToken('');
     }finally{
       setSubmitting(false);
     }
@@ -407,6 +528,7 @@ function RegistrationPage(){
           <div className="form-block"><span className="form-label">WHAT DO YOU WANT TO JOIN?</span><div className="option-grid">{registrationOptions.map(({id,title,desc,icon:Icon})=>{const active=selected.includes(id);return <button type="button" className={'register-option '+(active?'selected':'')} key={id} onClick={()=>toggle(id)}><span className="option-icon"><Icon size={20}/></span><span className="option-text"><b>{title}</b><small>{desc}</small></span><span className="option-check">{active?<Check size={15}/>:null}</span></button>})}</div></div>
           <div className="form-block"><span className="form-label">YOUR DETAILS</span><div className="form-grid"><label>Full Name<input required minLength="2" maxLength="100" name="name" autoComplete="name" placeholder="Your full name"/></label><label>Email Address<input required maxLength="160" type="email" name="email" autoComplete="email" placeholder="you@example.com"/></label><label>Phone Number<input maxLength="30" name="phone" autoComplete="tel" placeholder="+92 3XX XXXXXXX"/></label><label>Organization / University<input maxLength="150" name="organization" autoComplete="organization" placeholder="Company, university or community"/></label><label>City<input maxLength="80" name="city" autoComplete="address-level2" placeholder="Peshawar"/></label><label>Experience Level<select name="level" defaultValue="student"><option value="student">Student / Beginner</option><option value="intermediate">Intermediate</option><option value="professional">Professional</option><option value="expert">Security Expert / Researcher</option></select></label></div></div>
           <div className="form-block"><span className="form-label">CTF / WORKSHOP NOTES</span><label className="full-label">Anything we should know?<textarea maxLength="1000" name="notes" placeholder="Tell us about your CTF experience, interests or accessibility needs..." rows="5"/></label></div>
+          {TURNSTILE_SITE_KEY&&<div className="form-block verification-block"><span className="form-label">VERIFICATION</span><div ref={turnstileRef}/></div>}
           <div className="form-actions"><button className="btn btn-primary magnetic" type="submit" disabled={selected.length===0 || submitting}>{submitting?'Submitting...':'Submit Registration'} {!submitting&&<Send size={16}/>}</button><small>By registering, you agree to receive CyberFest event updates and registration-related communication.</small></div>
           {error&&<div className="error-panel" role="alert"><span>{error}</span></div>}
           {submitted&&<div className="success-panel" role="status"><Check/><div><b>Registration submitted successfully.</b><span>Your details have been sent to the CyberFest registration sheet.</span></div></div>}
